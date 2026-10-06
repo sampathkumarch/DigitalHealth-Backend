@@ -1,0 +1,38 @@
+name: Bug
+description: Behavior that does not match the acceptance criteria
+title: "[HB-?] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ticket id is `HB-<issue number>`.
+        Branch from `master` as `bugfix/HB-<number>-<kebab-summary>`.
+        Use `hotfix/` only when `master` is broken in production and the fix cannot wait.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true

@@ -1,0 +1,47 @@
+name: Feature
+description: A change that adds or extends behavior
+title: "[HB-?] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ticket id is `HB-<issue number>` after GitHub assigns the number.
+        Branch from `master` as `feature/HB-<number>-<kebab-summary>`.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this exists. Who is affected.
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: The outcome, in one short paragraph.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable statements. Each one should be true or false when the work is done.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What this ticket will not do.
+    validations:
+      required: false
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical notes
+      description: Layers touched, data, and risks. Leave blank if unknown.
+    validations:
+      required: false
