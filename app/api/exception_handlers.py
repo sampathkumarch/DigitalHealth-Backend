@@ -32,10 +32,19 @@ def _envelope(
 def register_exception_handlers(application: FastAPI) -> None:
     @application.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(
+        response = JSONResponse(
             status_code=exc.status_code,
-            content=_envelope(request, code=exc.code, message=exc.message),
+            content=_envelope(
+                request,
+                code=exc.code,
+                message=exc.message,
+                details=exc.details,
+            ),
         )
+        retry_after = getattr(exc, "retry_after", None)
+        if retry_after:
+            response.headers["Retry-After"] = str(retry_after)
+        return response
 
     @application.exception_handler(StarletteHTTPException)
     async def http_exception_handler(

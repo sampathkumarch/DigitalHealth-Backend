@@ -1,0 +1,13 @@
+from typing import Protocol
+
+
+class ObjectStorage(Protocol):
+    bucket_name: str
+
+    def put(self, key: str, data: bytes, content_type: str) -> None: ...
+
+    def delete(self, key: str) -> None: ...
+
+    def open_url(self, key: str) -> str | None: ...
+
+    def local_path(self, key: str) -> str | None: ...
