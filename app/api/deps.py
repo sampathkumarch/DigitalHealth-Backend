@@ -2,7 +2,8 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.domain.roles import ADMIN
 from app.domain.users import UserAccount
 from app.infrastructure.db.session import get_uow_factory, ping_database
 from app.infrastructure.redis.client import RedisRateLimiter, RedisTokenDenylist, get_redis, ping_redis
@@ -14,6 +15,8 @@ from app.repositories.storage import ObjectStorage
 from app.repositories.tokens import AccessTokens
 from app.repositories.unit_of_work import UnitOfWorkFactory
 from app.services.auth import AuthConfig, AuthService
+from app.services.diagnoses import DiagnosisService
+from app.services.diseases import DiseaseCatalogService
 from app.services.files import FileService
 from app.services.health import HealthService
 from app.services.profile import ProfileService
@@ -111,6 +114,18 @@ def get_profile_service(
     return ProfileService(uow_factory)
 
 
+def get_disease_service(
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
+) -> DiseaseCatalogService:
+    return DiseaseCatalogService(uow_factory)
+
+
+def get_diagnosis_service(
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
+) -> DiagnosisService:
+    return DiagnosisService(uow_factory)
+
+
 def get_file_service(
     uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
     storage: ObjectStorage = Depends(get_storage),
@@ -141,6 +156,12 @@ def get_current_user(
         user = uow.users.get_by_id(principal.user_id)
     if user is None or user.status != "active":
         raise UnauthorizedError()
+    return user
+
+
+def get_admin_user(user: UserAccount = Depends(get_current_user)) -> UserAccount:
+    if user.role != ADMIN:
+        raise ForbiddenError("Admin access is required.")
     return user
 
 

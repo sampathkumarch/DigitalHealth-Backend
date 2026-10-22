@@ -14,6 +14,7 @@ from app.infrastructure.db.models import (
     FileModel,
     OtpChallengeModel,
     RefreshTokenModel,
+    RoleModel,
     UserConditionModel,
     UserModel,
     UserProfileModel,
@@ -32,6 +33,7 @@ def _to_user(
     row: UserModel,
     profile: UserProfileModel | None,
     conditions: list[str],
+    role: str,
 ) -> UserAccount:
     health = HealthProfile()
     if profile is not None:
@@ -53,7 +55,7 @@ def _to_user(
         phone_verified_at=row.phone_verified_at,
         email=row.email,
         email_verified_at=row.email_verified_at,
-        role=row.role,
+        role=role,
         status=row.status,
         profile=health,
         created_at=row.created_at,
@@ -97,7 +99,7 @@ class SqlUserRepository:
                 phone_verified_at=user.phone_verified_at,
                 email=user.email,
                 email_verified_at=user.email_verified_at,
-                role=user.role,
+                role_id=self._role_id(user.role),
                 status=user.status,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
@@ -116,7 +118,7 @@ class SqlUserRepository:
         row.phone_verified_at = user.phone_verified_at
         row.email = user.email
         row.email_verified_at = user.email_verified_at
-        row.role = user.role
+        row.role_id = self._role_id(user.role)
         row.status = user.status
         row.updated_at = user.updated_at
         profile = self._session.get(UserProfileModel, user.id)
@@ -136,7 +138,19 @@ class SqlUserRepository:
                 .order_by(UserConditionModel.position)
             ).all()
         )
-        return _to_user(row, profile, conditions)
+        return _to_user(row, profile, conditions, self._role_code(row.role_id))
+
+    def _role_id(self, code: str) -> UUID:
+        role_id = self._session.scalar(select(RoleModel.id).where(RoleModel.code == code))
+        if role_id is None:
+            raise LookupError(f"Unknown role '{code}'")
+        return role_id
+
+    def _role_code(self, role_id: UUID) -> str:
+        code = self._session.scalar(select(RoleModel.code).where(RoleModel.id == role_id))
+        if code is None:
+            raise LookupError(f"Role {role_id} is missing")
+        return code
 
     def _profile_row(self, user: UserAccount) -> UserProfileModel:
         profile = user.profile

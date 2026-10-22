@@ -1,5 +1,7 @@
 from typing import Protocol
 
+from app.repositories.diagnoses import DiagnosisRepository
+from app.repositories.diseases import DiseaseRepository
 from app.repositories.files import FileRepository
 from app.repositories.otp import OtpRepository
 from app.repositories.tokens import RefreshTokenRepository
@@ -11,6 +13,8 @@ class UnitOfWork(Protocol):
     otps: OtpRepository
     tokens: RefreshTokenRepository
     files: FileRepository
+    diseases: DiseaseRepository
+    diagnoses: DiagnosisRepository
 
     def commit(self) -> None: ...
 

@@ -10,4 +10,8 @@ def test_account_tables_are_separated() -> None:
         "files",
         "otp_challenges",
         "refresh_tokens",
+        "roles",
+        "disease_categories",
+        "diseases",
+        "user_diagnoses",
     }

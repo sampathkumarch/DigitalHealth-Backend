@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
+from app.infrastructure.repositories.diseases import SqlDiagnosisRepository, SqlDiseaseRepository
 from app.infrastructure.repositories.sql import (
     SqlFileRepository,
     SqlOtpRepository,
@@ -55,6 +56,8 @@ class SqlUnitOfWork:
         self.otps: SqlOtpRepository
         self.tokens: SqlRefreshTokenRepository
         self.files: SqlFileRepository
+        self.diseases: SqlDiseaseRepository
+        self.diagnoses: SqlDiagnosisRepository
 
     def __enter__(self) -> "SqlUnitOfWork":
         session = self._session_factory()
@@ -63,6 +66,8 @@ class SqlUnitOfWork:
         self.otps = SqlOtpRepository(session)
         self.tokens = SqlRefreshTokenRepository(session)
         self.files = SqlFileRepository(session)
+        self.diseases = SqlDiseaseRepository(session)
+        self.diagnoses = SqlDiagnosisRepository(session)
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
