@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.infrastructure.repositories.diseases import SqlDiagnosisRepository, SqlDiseaseRepository
+from app.infrastructure.repositories.screen_time import SqlScreenTimeRepository
 from app.infrastructure.repositories.sql import (
     SqlFileRepository,
     SqlOtpRepository,
@@ -19,15 +19,15 @@ def get_engine():
     global _engine
     if _engine is not None:
         return _engine
-    kwargs: dict[str, object] = {"pool_pre_ping": True}
+    kwargs: dict[str, object] = {
+        "pool_pre_ping": True,
+        "pool_size": settings.db_pool_size,
+        "max_overflow": settings.db_max_overflow,
+        "pool_timeout": settings.db_pool_timeout,
+        "pool_recycle": settings.db_pool_recycle_seconds,
+    }
     if settings.db_pgbouncer:
-        kwargs["poolclass"] = NullPool
         kwargs["connect_args"] = {"prepare_threshold": None}
-    else:
-        kwargs["pool_size"] = settings.db_pool_size
-        kwargs["max_overflow"] = settings.db_max_overflow
-        kwargs["pool_timeout"] = settings.db_pool_timeout
-        kwargs["pool_recycle"] = settings.db_pool_recycle_seconds
     _engine = create_engine(settings.database_url, **kwargs)
     return _engine
 
@@ -58,6 +58,7 @@ class SqlUnitOfWork:
         self.files: SqlFileRepository
         self.diseases: SqlDiseaseRepository
         self.diagnoses: SqlDiagnosisRepository
+        self.screen_time: SqlScreenTimeRepository
 
     def __enter__(self) -> "SqlUnitOfWork":
         session = self._session_factory()
@@ -68,6 +69,7 @@ class SqlUnitOfWork:
         self.files = SqlFileRepository(session)
         self.diseases = SqlDiseaseRepository(session)
         self.diagnoses = SqlDiagnosisRepository(session)
+        self.screen_time = SqlScreenTimeRepository(session)
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:

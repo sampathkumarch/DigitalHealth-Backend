@@ -2,6 +2,7 @@ from typing import Protocol
 
 from app.repositories.diagnoses import DiagnosisRepository
 from app.repositories.diseases import DiseaseRepository
+from app.repositories.screen_time import ScreenTimeRepository
 from app.repositories.files import FileRepository
 from app.repositories.otp import OtpRepository
 from app.repositories.tokens import RefreshTokenRepository
@@ -15,6 +16,7 @@ class UnitOfWork(Protocol):
     files: FileRepository
     diseases: DiseaseRepository
     diagnoses: DiagnosisRepository
+    screen_time: ScreenTimeRepository
 
     def commit(self) -> None: ...
 

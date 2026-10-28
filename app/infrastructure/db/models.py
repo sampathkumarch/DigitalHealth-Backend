@@ -16,6 +16,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db.base import Base
@@ -276,3 +277,46 @@ class RefreshTokenModel(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     replaced_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class ScreenTimeDayModel(Base):
+    __tablename__ = "screen_time_days"
+    __table_args__ = (
+        UniqueConstraint("user_id", "device_id", "local_date", name="uq_screen_time_day"),
+        CheckConstraint("status IN ('partial', 'final')", name="ck_screen_time_status"),
+        Index("ix_screen_time_user_date", "user_id", "local_date"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    device_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    local_date: Mapped[date] = mapped_column(Date, nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    screen_on_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    hours: Mapped[list[int]] = mapped_column(JSONB, nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_now,
+        onupdate=_now,
+    )
+
+
+class ScreenTimeAppsModel(Base):
+    """One row per day. The apps list is a JSONB document, not one row per app."""
+
+    __tablename__ = "screen_time_apps"
+
+    day_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("screen_time_days.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    apps: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))

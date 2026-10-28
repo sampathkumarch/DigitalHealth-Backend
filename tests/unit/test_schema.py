@@ -14,4 +14,6 @@ def test_account_tables_are_separated() -> None:
         "disease_categories",
         "diseases",
         "user_diagnoses",
+        "screen_time_days",
+        "screen_time_apps",
     }

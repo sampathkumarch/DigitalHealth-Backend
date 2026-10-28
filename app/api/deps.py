@@ -21,6 +21,7 @@ from app.services.files import FileService
 from app.services.health import HealthService
 from app.services.profile import ProfileService
 from app.services.readiness import ReadinessService
+from app.services.screen_time import ScreenTimeService
 from app.worker import CeleryOtpDispatcher
 
 _bearer = HTTPBearer(auto_error=False)
@@ -124,6 +125,12 @@ def get_diagnosis_service(
     uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
 ) -> DiagnosisService:
     return DiagnosisService(uow_factory)
+
+
+def get_screen_time_service(
+    uow_factory: UnitOfWorkFactory = Depends(get_uow_factory),
+) -> ScreenTimeService:
+    return ScreenTimeService(uow_factory)
 
 
 def get_file_service(
