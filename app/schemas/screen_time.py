@@ -50,6 +50,12 @@ class ScreenTimeDaysResponse(BaseModel):
     days: list[ScreenTimeDayResponse]
 
 
+class ScreenTimeSpanResponse(BaseModel):
+    origin_date: date | None = None
+    last_date: date | None = None
+    device_id: UUID | None = None
+
+
 def drafts_from_request(body: ReplaceScreenTimeRequest) -> list[ScreenTimeDraft]:
     return [
         ScreenTimeDraft(

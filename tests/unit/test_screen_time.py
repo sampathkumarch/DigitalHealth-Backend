@@ -55,6 +55,31 @@ class MemoryScreenTime:
     def save_day(self, day: ScreenTimeDay) -> None:
         self.days[(day.user_id, day.device_id, day.local_date)] = day
 
+    def save_days(self, days: list[ScreenTimeDay]) -> None:
+        for day in days:
+            self.save_day(day)
+
+    def day_span(self, user_id, device_id):
+        matching = [
+            (local_date, device)
+            for (owner, device, local_date) in self.days
+            if owner == user_id and device == device_id
+        ]
+        if matching:
+            dates = [item[0] for item in matching]
+            return min(dates), max(dates), device_id
+        owned = [
+            (local_date, device)
+            for (owner, device, local_date) in self.days
+            if owner == user_id
+        ]
+        if not owned:
+            return None, None, None
+        origin = min(item[0] for item in owned)
+        device = next(item[1] for item in owned if item[0] == origin)
+        last = max(item[0] for item in owned if item[1] == device)
+        return origin, last, device
+
 
 class Factory:
     def __init__(self, repo: MemoryScreenTime) -> None:
@@ -124,6 +149,36 @@ def test_replace_keeps_a_newer_snapshot_and_a_closed_day() -> None:
     )
     assert partial[0].status == "final"
     assert partial[0].screen_on_ms == 3_600_000
+
+
+def test_span_returns_the_first_and_last_stored_day() -> None:
+    member = new_member("+91", "9876543210", NOW)
+    repo = MemoryScreenTime()
+    service = ScreenTimeService(Factory(repo), clock=lambda: NOW)
+    assert service.day_span(member.id, DEVICE) == (None, None, None)
+    service.replace_days(
+        member.id,
+        [
+            _draft(local_date=NOW.date() - timedelta(days=6), status="final"),
+            _draft(local_date=NOW.date(), status="partial"),
+        ],
+    )
+    assert service.day_span(member.id, DEVICE) == (NOW.date() - timedelta(days=6), NOW.date(), DEVICE)
+
+
+def test_span_falls_back_to_the_users_existing_device() -> None:
+    member = new_member("+91", "9876543210", NOW)
+    repo = MemoryScreenTime()
+    service = ScreenTimeService(Factory(repo), clock=lambda: NOW)
+    service.replace_days(
+        member.id,
+        [_draft(local_date=NOW.date() - timedelta(days=6), status="final")],
+    )
+    other = uuid4()
+    origin, last, stored = service.day_span(member.id, other)
+    assert stored == DEVICE
+    assert origin == NOW.date() - timedelta(days=6)
+    assert last == NOW.date() - timedelta(days=6)
 
 
 def test_list_rejects_a_long_range() -> None:

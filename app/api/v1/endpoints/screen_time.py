@@ -8,12 +8,23 @@ from app.domain.users import UserAccount
 from app.schemas.screen_time import (
     ReplaceScreenTimeRequest,
     ScreenTimeDaysResponse,
+    ScreenTimeSpanResponse,
     days_response,
     drafts_from_request,
 )
 from app.services.screen_time import ScreenTimeService
 
 router = APIRouter(prefix="/me/screen-time", tags=["screen-time"])
+
+
+@router.get("/span", response_model=ScreenTimeSpanResponse)
+def day_span(
+    device_id: UUID,
+    user: UserAccount = Depends(get_current_user),
+    service: ScreenTimeService = Depends(get_screen_time_service),
+) -> ScreenTimeSpanResponse:
+    origin, last, stored_device = service.day_span(user.id, device_id)
+    return ScreenTimeSpanResponse(origin_date=origin, last_date=last, device_id=stored_device)
 
 
 @router.put("/days", response_model=ScreenTimeDaysResponse)

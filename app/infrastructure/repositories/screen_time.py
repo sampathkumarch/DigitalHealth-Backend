@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.screen_time import ScreenTimeApp, ScreenTimeDay
@@ -40,6 +40,32 @@ class SqlScreenTimeRepository:
         apps = self._apps_by_day([row.id for row in rows])
         return [_to_day(row, apps.get(row.id)) for row in rows]
 
+    def day_span(self, user_id: UUID, device_id: UUID) -> tuple[date | None, date | None, UUID | None]:
+        row = self._session.execute(
+            select(
+                func.min(ScreenTimeDayModel.local_date),
+                func.max(ScreenTimeDayModel.local_date),
+            ).where(
+                ScreenTimeDayModel.user_id == user_id,
+                ScreenTimeDayModel.device_id == device_id,
+            )
+        ).one()
+        if row[0] is not None:
+            return row[0], row[1], device_id
+        grouped = self._session.execute(
+            select(
+                ScreenTimeDayModel.device_id,
+                func.min(ScreenTimeDayModel.local_date),
+                func.max(ScreenTimeDayModel.local_date),
+            )
+            .where(ScreenTimeDayModel.user_id == user_id)
+            .group_by(ScreenTimeDayModel.device_id)
+        ).all()
+        if not grouped:
+            return None, None, None
+        best = min(grouped, key=lambda item: item[1])
+        return best[1], best[2], best[0]
+
     def save_day(self, day: ScreenTimeDay) -> None:
         row = self._session.scalar(
             select(ScreenTimeDayModel).where(
@@ -73,6 +99,47 @@ class SqlScreenTimeRepository:
             row.updated_at = now
         self._session.flush()
         self._save_apps(row.id, apps_to_json(day.apps))
+
+    def save_days(self, days: list[ScreenTimeDay]) -> None:
+        if not days:
+            return
+        dates = [day.local_date for day in days]
+        rows = self._session.scalars(
+            select(ScreenTimeDayModel).where(
+                ScreenTimeDayModel.user_id == days[0].user_id,
+                ScreenTimeDayModel.device_id == days[0].device_id,
+                ScreenTimeDayModel.local_date.in_(dates),
+            )
+        ).all()
+        by_date = {row.local_date: row for row in rows}
+        now = datetime.now(timezone.utc)
+        for day in days:
+            row = by_date.get(day.local_date)
+            if row is None:
+                row = ScreenTimeDayModel(
+                    id=uuid4(),
+                    user_id=day.user_id,
+                    device_id=day.device_id,
+                    local_date=day.local_date,
+                    timezone=day.timezone,
+                    status=day.status,
+                    screen_on_ms=day.screen_on_ms,
+                    hours=list(day.hours),
+                    captured_at=day.captured_at,
+                    created_at=now,
+                    updated_at=now,
+                )
+                self._session.add(row)
+                by_date[day.local_date] = row
+            else:
+                row.timezone = day.timezone
+                row.status = day.status
+                row.screen_on_ms = day.screen_on_ms
+                row.hours = list(day.hours)
+                row.captured_at = day.captured_at
+                row.updated_at = now
+            self._session.flush()
+            self._save_apps(row.id, apps_to_json(day.apps))
 
     def _apps_by_day(self, day_ids: list[UUID]) -> dict[UUID, object]:
         if not day_ids:

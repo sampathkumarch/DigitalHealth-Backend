@@ -23,7 +23,7 @@ class ScreenTimeService:
             raise ValidationFailed("Choose at least one day.", {"days": "Choose at least one day."})
         now = self._clock()
         with self._uow_factory() as uow:
-            stored: list[ScreenTimeDay] = []
+            incoming: list[ScreenTimeDay] = []
             seen: set[tuple[UUID, object]] = set()
             for draft in drafts[:MAX_DAYS]:
                 try:
@@ -34,14 +34,26 @@ class ScreenTimeService:
                 if key in seen:
                     continue
                 seen.add(key)
-                existing = uow.screen_time.get_day(user_id, day.device_id, day.local_date)
-                if existing is not None and should_keep_existing(existing, day):
-                    stored.append(existing)
-                    continue
-                uow.screen_time.save_day(day)
-                stored.append(day)
-            if not stored:
+                incoming.append(day)
+            if not incoming:
                 raise ValidationFailed("Choose a valid day.", {"days": "Choose a valid day."})
+            start = min(day.local_date for day in incoming)
+            end = max(day.local_date for day in incoming)
+            existing = {
+                item.local_date: item
+                for item in uow.screen_time.list_days(user_id, incoming[0].device_id, start, end)
+            }
+            stored: list[ScreenTimeDay] = []
+            writes: list[ScreenTimeDay] = []
+            for day in incoming:
+                current = existing.get(day.local_date)
+                if current is not None and should_keep_existing(current, day):
+                    stored.append(current)
+                    continue
+                writes.append(day)
+                stored.append(day)
+            if writes:
+                uow.screen_time.save_days(writes)
             uow.commit()
             return stored
 
@@ -52,6 +64,10 @@ class ScreenTimeService:
             raise ValidationFailed("Ask for at most 31 days.", {"to": "Ask for at most 31 days."})
         with self._uow_factory() as uow:
             return uow.screen_time.list_days(user_id, device_id, start, end)
+
+    def day_span(self, user_id: UUID, device_id: UUID) -> tuple[date | None, date | None, UUID | None]:
+        with self._uow_factory() as uow:
+            return uow.screen_time.day_span(user_id, device_id)
 
 
 def _owned(user_id: UUID, day: ScreenTimeDay) -> ScreenTimeDay:
