@@ -16,3 +16,6 @@ build/
 .idea/
 .vscode/
 var/
+.env.*
+!.env.example
+.env.example
